@@ -48,6 +48,41 @@ export async function inviteUserAction(
   return { error: null };
 }
 
+/**
+ * Clears every MFA factor enrolled on a user's account. This does not
+ * exempt them from the MFA requirement (§6.3 requires it for every
+ * account, enforced by proxy.ts regardless of this) — it forces them back
+ * through /mfa/enroll on their next login, which is the fix for "lost my
+ * phone" / "reinstalled my authenticator app" rather than a bypass.
+ */
+export async function resetMfaAction(profileId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!isAdmin(profile)) return { error: "Admin only." };
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return {
+      error: "SUPABASE_SERVICE_ROLE_KEY is not configured on this deployment — MFA reset requires it.",
+    };
+  }
+
+  const { data, error: listError } = await admin.auth.admin.mfa.listFactors({ userId: profileId });
+  if (listError) return { error: listError.message };
+
+  for (const factor of data.factors) {
+    const { error: deleteError } = await admin.auth.admin.mfa.deleteFactor({
+      id: factor.id,
+      userId: profileId,
+    });
+    if (deleteError) return { error: deleteError.message };
+  }
+
+  revalidatePath("/admin/users");
+  return { error: null };
+}
+
 export async function updateProfileAction(
   profileId: string,
   patch: { role?: Role; active?: boolean; agency?: string; badge_id?: string | null }

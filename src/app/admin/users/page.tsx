@@ -7,7 +7,7 @@ export default async function AdminUsersPage() {
   const { data: profiles } = await supabase.from("profiles").select("*").order("full_name");
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <h1 className="mb-4 text-lg font-semibold text-fg">Users</h1>
 
       <InviteForm />
@@ -20,6 +20,7 @@ export default async function AdminUsersPage() {
             <th className="py-2 pr-3">Badge</th>
             <th className="py-2 pr-3">Role</th>
             <th className="py-2 pr-3">Active</th>
+            <th className="py-2 pr-3">MFA</th>
           </tr>
         </thead>
         <tbody>
