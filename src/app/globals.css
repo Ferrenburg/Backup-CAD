@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/*
+ * CAD Downtime Log — console theme.
+ * Dark surface always: this runs overnight in a dimly lit dispatch room,
+ * and a white screen at 0300 is hostile (§8). Color carries exactly one
+ * job — priority and status. Priority 1 is the only saturated color on
+ * the screen; everything else stays neutral.
+ */
+:root {
+  --bg: #0b0d10;
+  --surface: #14171c;
+  --surface-raised: #1b1f26;
+  --border: #2a2f38;
+  --border-strong: #3a4150;
+  --fg: #e8ebef;
+  --fg-muted: #97a0ad;
+  --fg-dim: #626a76;
+
+  --accent: #4ea1ff;
+  --accent-fg: #05131f;
+
+  --status-active: #4ea1ff;
+  --status-cleared: #5a6473;
+  --status-voided: #7a5a5a;
+
+  --p1: #ff3b30;
+  --p1-fg: #1a0000;
+  --p2: #ff9f0a;
+  --p3: #e8ebef;
+  --p4: #97a0ad;
+  --p5: #626a76;
+
+  --ok: #35c47a;
+  --warn: #ff9f0a;
+  --danger: #ff3b30;
+
+  --focus-ring: #4ea1ff;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-dim: var(--fg-dim);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-p1: var(--p1);
+  --color-p1-fg: var(--p1-fg);
+  --color-p2: var(--p2);
+  --color-p3: var(--p3);
+  --color-p4: var(--p4);
+  --color-p5: var(--p5);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+}
+
+.font-mono-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print — shift report (§7.8). Letter portrait, legible on paper. */
+@media print {
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-page {
+    color: #000000;
+    background: #ffffff;
+  }
+}
