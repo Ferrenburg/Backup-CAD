@@ -9,6 +9,7 @@ import { CjiBanner } from "@/components/cji-banner";
 import { ShortcutHelp } from "./shortcut-help";
 import { stampCallTimeAction } from "@/app/outage/[id]/calls-actions";
 import { canDispatch } from "@/lib/roles";
+import { useRefreshAfter } from "@/lib/use-refresh-after";
 
 function isTypingTarget(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -17,12 +18,13 @@ function isTypingTarget(el: EventTarget | null): boolean {
 }
 
 export function BoardShell({ children }: { children: React.ReactNode }) {
-  const { calls, profile, outage } = useBoardContext();
+  const { calls, profile, outage, updateCallLocally } = useBoardContext();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ id: string }>();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const scheduleRefresh = useRefreshAfter(500);
 
   const selectedCallId = pathname.match(/\/call\/([^/]+)/)?.[1] ?? null;
 
@@ -94,7 +96,10 @@ export function BoardShell({ children }: { children: React.ReactNode }) {
           const field = map[e.key.toLowerCase()];
           if (field) {
             e.preventDefault();
-            void stampCallTimeAction(params.id, selectedCallId, field);
+            const iso = new Date().toISOString();
+            updateCallLocally(selectedCallId, { [field]: iso });
+            void stampCallTimeAction(params.id, selectedCallId, field, iso);
+            scheduleRefresh();
           }
           break;
         }
@@ -112,7 +117,7 @@ export function BoardShell({ children }: { children: React.ReactNode }) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goToOffset, params.id, profile, router, selectedCallId]);
+  }, [goToOffset, params.id, profile, router, selectedCallId, updateCallLocally, scheduleRefresh]);
 
   return (
     <div className="flex min-h-screen flex-1 flex-col">

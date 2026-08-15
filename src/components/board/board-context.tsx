@@ -11,6 +11,8 @@ interface BoardContextValue {
   units: Unit[];
   unitAssignments: UnitAssignment[];
   unitsForCall: (callId: string) => UnitAssignment[];
+  updateCallLocally: (callId: string, patch: Partial<Call>) => void;
+  updateUnitAssignmentLocally: (unitAssignmentId: string, patch: Partial<UnitAssignment>) => void;
   lookupsByCategory: Record<LookupCategory, Lookup[]>;
   now: number;
 }
@@ -45,6 +47,23 @@ export function BoardProvider({
   const [now, setNow] = useState(() => Date.now());
   const supabaseRef = useRef(createClient());
   const callIdsRef = useRef<Set<string>>(new Set(initialCalls.map((c) => c.id)));
+
+  // The outage layout is a Server Component — every router.refresh() re-runs
+  // its fetch and hands us a brand new `initialCalls`/`initialUnitAssignments`
+  // array. Re-sync local state from it whenever that happens (render-time
+  // adjustment, not an effect, so it can't race the realtime subscription
+  // below) — this is what makes the "refresh shortly after a write" pattern
+  // actually reconcile with the server instead of being a no-op.
+  const [prevInitialCalls, setPrevInitialCalls] = useState(initialCalls);
+  if (initialCalls !== prevInitialCalls) {
+    setPrevInitialCalls(initialCalls);
+    setCalls(initialCalls);
+  }
+  const [prevInitialUnitAssignments, setPrevInitialUnitAssignments] = useState(initialUnitAssignments);
+  if (initialUnitAssignments !== prevInitialUnitAssignments) {
+    setPrevInitialUnitAssignments(initialUnitAssignments);
+    setUnitAssignments(initialUnitAssignments);
+  }
 
   useEffect(() => {
     callIdsRef.current = new Set(calls.map((c) => c.id));
@@ -113,6 +132,16 @@ export function BoardProvider({
   const unitsForCall = (callId: string) =>
     unitAssignments.filter((u) => u.call_id === callId);
 
+  // Optimistic updates: applied immediately on click, before the server
+  // action round-trips, so a tap feels instant. Realtime and/or the
+  // scheduled refresh reconcile with the authoritative row shortly after.
+  function updateCallLocally(callId: string, patch: Partial<Call>) {
+    setCalls((prev) => prev.map((c) => (c.id === callId ? { ...c, ...patch } : c)));
+  }
+  function updateUnitAssignmentLocally(unitAssignmentId: string, patch: Partial<UnitAssignment>) {
+    setUnitAssignments((prev) => prev.map((u) => (u.id === unitAssignmentId ? { ...u, ...patch } : u)));
+  }
+
   const lookupsByCategory = useMemo(() => {
     const grouped: Record<string, Lookup[]> = {};
     for (const l of lookups) {
@@ -132,6 +161,8 @@ export function BoardProvider({
     units,
     unitAssignments,
     unitsForCall,
+    updateCallLocally,
+    updateUnitAssignmentLocally,
     lookupsByCategory,
     now,
   };

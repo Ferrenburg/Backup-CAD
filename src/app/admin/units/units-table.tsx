@@ -66,6 +66,7 @@ export function UnitsTable({ units }: { units: Unit[] }) {
           <label className="mb-1 block text-xs text-fg-muted">Agency</label>
           <select value={newAgency} onChange={(e) => setNewAgency(e.target.value)} className="rounded border border-border-strong bg-surface-raised px-2 py-1.5 text-fg">
             <option value="PD">PD</option>
+            <option value="FD">FD</option>
             <option value="Fire">Fire</option>
             <option value="EMS">EMS</option>
           </select>

@@ -10,6 +10,7 @@ import {
   updateUnitAssignmentAction,
   type UnitTimeField,
 } from "@/app/outage/[id]/calls-actions";
+import { useRefreshAfter } from "@/lib/use-refresh-after";
 import type { UnitAssignment } from "@/lib/types";
 
 export function CallUnits({
@@ -29,6 +30,7 @@ export function CallUnits({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
+  const scheduleRefresh = useRefreshAfter(500);
 
   const assignedIds = new Set(assignments.map((a) => a.unit_id));
   const unitOptions = units
@@ -48,6 +50,7 @@ export function CallUnits({
     await addUnitAction(outageId, callId, selectedUnit);
     setSelectedUnit(null);
     setPickerOpen(false);
+    scheduleRefresh();
   }
 
   return (
@@ -116,14 +119,21 @@ function UnitAssignmentCard({
   dispositionOptions: { value: string }[];
   disabled: boolean;
 }) {
+  const { updateUnitAssignmentLocally } = useBoardContext();
   const [personnel, setPersonnel] = useState(assignment.personnel ?? "");
   const [disposition, setDisposition] = useState<string | null>(assignment.unit_disposition);
+  const scheduleRefresh = useRefreshAfter(500);
 
   function stamp(field: UnitTimeField) {
-    void stampUnitTimeAction(outageId, callId, assignment.id, field);
+    const iso = new Date().toISOString();
+    updateUnitAssignmentLocally(assignment.id, { [field]: iso });
+    void stampUnitTimeAction(outageId, callId, assignment.id, field, iso);
+    scheduleRefresh();
   }
   function manual(field: UnitTimeField, iso: string) {
+    updateUnitAssignmentLocally(assignment.id, { [field]: iso });
     void stampUnitTimeAction(outageId, callId, assignment.id, field, iso);
+    scheduleRefresh();
   }
 
   return (
@@ -133,9 +143,10 @@ function UnitAssignmentCard({
         <input
           value={personnel}
           onChange={(e) => setPersonnel(e.target.value)}
-          onBlur={() =>
-            updateUnitAssignmentAction(outageId, callId, assignment.id, { personnel: personnel || null })
-          }
+          onBlur={() => {
+            void updateUnitAssignmentAction(outageId, callId, assignment.id, { personnel: personnel || null });
+            scheduleRefresh();
+          }}
           placeholder="Personnel"
           disabled={disabled}
           className="rounded border border-border-strong bg-surface-raised px-2 py-1 text-sm text-fg outline-none disabled:opacity-60"
@@ -158,19 +169,26 @@ function UnitAssignmentCard({
           onChange={(v) => {
             setDisposition(v);
             void updateUnitAssignmentAction(outageId, callId, assignment.id, { unit_disposition: v });
+            scheduleRefresh();
           }}
           options={dispositionOptions.map((d) => ({ value: d.value, label: d.value }))}
         />
         <OdometerField
           label="Odometer start"
           value={assignment.odometer_start}
-          onSet={(v) => updateUnitAssignmentAction(outageId, callId, assignment.id, { odometer_start: v })}
+          onSet={(v) => {
+            void updateUnitAssignmentAction(outageId, callId, assignment.id, { odometer_start: v });
+            scheduleRefresh();
+          }}
           disabled={disabled}
         />
         <OdometerField
           label="Odometer end"
           value={assignment.odometer_end}
-          onSet={(v) => updateUnitAssignmentAction(outageId, callId, assignment.id, { odometer_end: v })}
+          onSet={(v) => {
+            void updateUnitAssignmentAction(outageId, callId, assignment.id, { odometer_end: v });
+            scheduleRefresh();
+          }}
           disabled={disabled}
         />
       </div>

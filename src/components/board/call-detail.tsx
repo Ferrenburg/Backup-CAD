@@ -15,11 +15,13 @@ import {
 } from "@/app/outage/[id]/calls-actions";
 import { computeCallDurations, formatClock } from "@/lib/time";
 import { canSupervise } from "@/lib/roles";
-import type { NarrativeEntry } from "@/lib/types";
+import { useRefreshAfter } from "@/lib/use-refresh-after";
+import type { Call, NarrativeEntry } from "@/lib/types";
 
 export function CallDetail({ callId }: { callId: string }) {
-  const { outage, calls, unitsForCall, profile, lookupsByCategory } = useBoardContext();
+  const { outage, calls, unitsForCall, profile, lookupsByCategory, updateCallLocally } = useBoardContext();
   const call = calls.find((c) => c.id === callId);
+  const scheduleRefresh = useRefreshAfter(500);
   const [voidReason, setVoidReason] = useState("");
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidError, setVoidError] = useState<string | null>(null);
@@ -36,14 +38,27 @@ export function CallDetail({ callId }: { callId: string }) {
   const durations = computeCallDurations(call);
 
   function patch(field: string, v: string | boolean | null) {
+    updateCallLocally(call!.id, { [field]: v } as Partial<Call>);
     void updateCallFieldsAction(outage.id, call!.id, { [field]: v });
+    scheduleRefresh();
   }
 
   function stamp(field: CallTimeField) {
-    void stampCallTimeAction(outage.id, call!.id, field);
+    const iso = new Date().toISOString();
+    updateCallLocally(call!.id, { [field]: iso } as Partial<Call>);
+    void stampCallTimeAction(outage.id, call!.id, field, iso);
+    scheduleRefresh();
   }
   function manual(field: CallTimeField, iso: string) {
+    updateCallLocally(call!.id, { [field]: iso } as Partial<Call>);
     void stampCallTimeAction(outage.id, call!.id, field, iso);
+    scheduleRefresh();
+  }
+
+  function markCleared() {
+    updateCallLocally(call!.id, { status: "cleared" });
+    void setCallStatusAction(outage.id, call!.id, "cleared");
+    scheduleRefresh();
   }
 
   async function handleVoid() {
@@ -57,6 +72,7 @@ export function CallDetail({ callId }: { callId: string }) {
       return;
     }
     setVoidOpen(false);
+    scheduleRefresh();
   }
 
   const opt = (cat: string) =>
@@ -79,7 +95,7 @@ export function CallDetail({ callId }: { callId: string }) {
           {call.status === "active" && !locked ? (
             <button
               type="button"
-              onClick={() => setCallStatusAction(outage.id, call.id, "cleared")}
+              onClick={markCleared}
               className="rounded border border-border-strong px-3 py-1.5 text-sm text-fg-muted hover:text-fg"
             >
               Mark cleared
