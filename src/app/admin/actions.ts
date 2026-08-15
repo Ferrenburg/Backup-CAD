@@ -85,7 +85,7 @@ export async function resetMfaAction(profileId: string): Promise<ActionResult> {
 
 export async function updateProfileAction(
   profileId: string,
-  patch: { role?: Role; active?: boolean; agency?: string; badge_id?: string | null }
+  patch: { role?: Role; active?: boolean; agency?: string; badge_id?: string | null; mfa_exempt?: boolean }
 ): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!isAdmin(profile)) return { error: "Admin only." };

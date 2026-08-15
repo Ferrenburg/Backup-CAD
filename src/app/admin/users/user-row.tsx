@@ -12,6 +12,8 @@ export function UserRow({ profile }: { profile: Profile }) {
   const [active, setActive] = useState(profile.active);
   const [agency, setAgency] = useState(profile.agency);
   const [badgeId, setBadgeId] = useState(profile.badge_id ?? "");
+  const [mfaExempt, setMfaExempt] = useState(profile.mfa_exempt);
+  const [exemptConfirming, setExemptConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -20,12 +22,25 @@ export function UserRow({ profile }: { profile: Profile }) {
   const [mfaDone, setMfaDone] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
 
-  function save(patch: Partial<{ role: Role; active: boolean; agency: string; badge_id: string | null }>) {
+  function save(
+    patch: Partial<{ role: Role; active: boolean; agency: string; badge_id: string | null; mfa_exempt: boolean }>
+  ) {
     startTransition(async () => {
       const result = await updateProfileAction(profile.id, patch);
       if (result.error) setError(result.error);
       else setError(null);
     });
+  }
+
+  function requireMfa() {
+    setMfaExempt(false);
+    save({ mfa_exempt: false });
+  }
+
+  function confirmExempt() {
+    setMfaExempt(true);
+    setExemptConfirming(false);
+    save({ mfa_exempt: true });
   }
 
   async function handleResetMfa() {
@@ -93,37 +108,69 @@ export function UserRow({ profile }: { profile: Profile }) {
         />
       </td>
       <td className="py-2 pr-3">
-        {mfaDone ? (
-          <span className="text-xs text-ok">Reset — will re-enroll next login</span>
-        ) : mfaConfirming ? (
-          <span className="flex items-center gap-2">
+        <div className="flex flex-col gap-1.5">
+          {exemptConfirming ? (
+            <span className="flex items-center gap-2">
+              <span className="text-xs text-danger">Exempt from MFA?</span>
+              <button
+                type="button"
+                onClick={confirmExempt}
+                className="rounded bg-danger px-2 py-0.5 text-xs font-semibold text-white"
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                onClick={() => setExemptConfirming(false)}
+                className="rounded border border-border-strong px-2 py-0.5 text-xs text-fg-muted"
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <label className="flex items-center gap-1.5 text-xs text-fg-muted">
+              <input
+                type="checkbox"
+                checked={!mfaExempt}
+                onChange={(e) => (e.target.checked ? requireMfa() : setExemptConfirming(true))}
+              />
+              Require MFA
+              {mfaExempt ? <span className="text-danger">(exempt)</span> : null}
+            </label>
+          )}
+
+          {mfaDone ? (
+            <span className="text-xs text-ok">Reset — will re-enroll next login</span>
+          ) : mfaConfirming ? (
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={mfaBusy}
+                onClick={handleResetMfa}
+                className="rounded bg-danger px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {mfaBusy ? "Resetting…" : "Confirm reset"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMfaConfirming(false)}
+                className="rounded border border-border-strong px-2 py-1 text-xs text-fg-muted"
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
             <button
               type="button"
-              disabled={mfaBusy}
-              onClick={handleResetMfa}
-              className="rounded bg-danger px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+              onClick={() => setMfaConfirming(true)}
+              className="w-fit rounded border border-border-strong px-2 py-1 text-xs text-fg-muted hover:text-fg"
+              title="Clears their enrolled authenticator so they set up a new one on next login — for a lost or replaced phone."
             >
-              {mfaBusy ? "Resetting…" : "Confirm reset"}
+              Reset MFA
             </button>
-            <button
-              type="button"
-              onClick={() => setMfaConfirming(false)}
-              className="rounded border border-border-strong px-2 py-1 text-xs text-fg-muted"
-            >
-              Cancel
-            </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setMfaConfirming(true)}
-            className="rounded border border-border-strong px-2 py-1 text-xs text-fg-muted hover:text-fg"
-            title="Clears their enrolled authenticator so they set up a new one on next login — for a lost or replaced phone."
-          >
-            Reset MFA
-          </button>
-        )}
-        {mfaError ? <div className="mt-1 text-xs text-danger">{mfaError}</div> : null}
+          )}
+          {mfaError ? <div className="text-xs text-danger">{mfaError}</div> : null}
+        </div>
       </td>
       {isPending ? <td className="text-xs text-fg-dim">saving…</td> : null}
       {error ? <td className="text-xs text-danger">{error}</td> : null}

@@ -50,39 +50,48 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // MFA required for all accounts (§6.3). A user with no verified factor
-  // gets routed to enrollment and nothing else; a user with a factor who
-  // hasn't stepped up this session gets routed to the challenge.
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  const isMfaPath = MFA_PATHS.some((p) => pathname.startsWith(p));
-  const requiredMfaPath =
-    aal?.nextLevel === "aal1"
-      ? "/mfa/enroll"
-      : aal && aal.currentLevel !== aal.nextLevel
-        ? "/mfa/verify"
-        : null;
-
-  if (requiredMfaPath) {
-    if (pathname.startsWith(requiredMfaPath)) return response;
-    const url = request.nextUrl.clone();
-    url.pathname = requiredMfaPath;
-    return NextResponse.redirect(url);
-  }
-  if (isMfaPath) {
-    // MFA already fully satisfied — no reason to be on an /mfa/* screen.
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, active")
+    .select("role, active, mfa_exempt")
     .eq("id", user.id)
     .maybeSingle();
 
   const role = profile?.role ?? "readonly";
   const active = profile?.active ?? false;
+  const mfaExempt = profile?.mfa_exempt ?? false;
+
+  // MFA required for all accounts (§6.3), unless an admin has explicitly
+  // exempted this one (profiles.mfa_exempt — set only via /admin/users, a
+  // deliberate per-account weakening of that requirement, not a default).
+  // A user with no verified factor gets routed to enrollment and nothing
+  // else; a user with a factor who hasn't stepped up this session gets
+  // routed to the challenge.
+  const isMfaPath = MFA_PATHS.some((p) => pathname.startsWith(p));
+  if (!mfaExempt) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const requiredMfaPath =
+      aal?.nextLevel === "aal1"
+        ? "/mfa/enroll"
+        : aal && aal.currentLevel !== aal.nextLevel
+          ? "/mfa/verify"
+          : null;
+
+    if (requiredMfaPath) {
+      if (pathname.startsWith(requiredMfaPath)) return response;
+      const url = request.nextUrl.clone();
+      url.pathname = requiredMfaPath;
+      return NextResponse.redirect(url);
+    }
+    if (isMfaPath) {
+      // MFA already fully satisfied — no reason to be on an /mfa/* screen.
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+  }
+  // An exempt account is never forced onto /mfa/*, but isn't blocked from
+  // visiting it either — they can still opt into MFA voluntarily.
+
   const hasAccess = active && role !== "readonly";
 
   if (!hasAccess) {
