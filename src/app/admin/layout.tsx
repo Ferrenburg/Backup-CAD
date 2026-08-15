@@ -25,6 +25,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/lookups" className="text-fg-muted hover:text-fg">
               Lookups
             </Link>
+            <Link href="/audit-log" className="text-fg-muted hover:text-fg">
+              Audit log
+            </Link>
           </nav>
         </div>
         <SignOutButton />

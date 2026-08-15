@@ -165,6 +165,11 @@ function OutageHeader() {
           Export units
         </a>
         {(profile.role === "supervisor" || profile.role === "admin") && (
+          <Link href="/audit-log" className="text-fg-muted hover:text-fg">
+            Audit log
+          </Link>
+        )}
+        {(profile.role === "supervisor" || profile.role === "admin") && (
           <Link href={`/outage/${outage.id}/close`} className="text-fg-muted hover:text-fg">
             Close
           </Link>

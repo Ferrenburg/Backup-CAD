@@ -37,6 +37,11 @@ export default async function HomePage() {
           <h1 className="text-xl font-semibold text-fg">CAD Downtime Log</h1>
         </div>
         <div className="flex items-center gap-3">
+          {canSupervise(profile) ? (
+            <Link href="/audit-log" className="text-sm text-fg-muted hover:text-fg">
+              Audit log
+            </Link>
+          ) : null}
           <span className="text-sm text-fg-muted">{profile?.full_name}</span>
           <SignOutButton />
         </div>
